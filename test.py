@@ -2,14 +2,16 @@
 from neo4j import GraphDatabase
 from neo4j_graphrag.retrievers import Text2CypherRetriever
 from neo4j_graphrag.llm import OpenAILLM
+from dotenv import load_dotenv
 import asyncio
 import nest_asyncio
+import os
 
 # Permet d'utiliser asyncio.run() même dans Jupyter ou quand un loop existe déjà
 nest_asyncio.apply()
 
 #connection à neo4j
-driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", ""))
+driver = GraphDatabase.driver(f"bolt://localhost:{DATABASE_PORT}", auth=(DATABASE_AUTH, DATABASE_PWD))
 
 
 llm = OpenAILLM(
@@ -56,6 +58,14 @@ async def test():
 
 #lancement
 if __name__ == "__main__":
+
+    load_dotenv()
+    DATABASE_AUTH = os.getenv("DATABASE_AUTH")
+    DATABASE_PWD = os.getenv("DATABASE_PWD")
+    DATABASE_PORT = os.getenv("DATABASE_PORT")
+
+    print(DATABASE_AUTH, DATABASE_PWD, DATABASE_AUTH)
+
     asyncio.run(test())
     driver.close()
     print("\nFin du script – tout s'est bien passé !")
