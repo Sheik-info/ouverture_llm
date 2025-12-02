@@ -9,7 +9,7 @@ import nest_asyncio
 nest_asyncio.apply()
 
 #connection à neo4j
-driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "boc23102002"))
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", ""))
 
 
 llm = OpenAILLM(
