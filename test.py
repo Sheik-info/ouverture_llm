@@ -2,8 +2,9 @@
 from neo4j import GraphDatabase, basic_auth
 from neo4j_graphrag.retrievers import Text2CypherRetriever
 from neo4j_graphrag.llm import OpenAILLM
+from neo4j_graphrag.generation import GraphRAG
 from dotenv import load_dotenv
-import asyncio
+import time
 import nest_asyncio
 import os
 
@@ -19,42 +20,42 @@ DATABASE_PORT = os.getenv("DATABASE_PORT")
 
 
 graph_use ="""
-MERGE (s:Serie {nom: 'Bing Bang Theory'})
+MERGE (s:Serie {name: 'Bing Bang Theory'})
 
-MERGE (a1:Acteur {nom: 'Jim Parsons'})
-SET a1.cheveux = 'brun'
-MERGE (a1)-[:JOUE_DANS {role: 'Sheldon Cooper'}]->(s)
-MERGE (s)-[:IMPORTANCE {importance: 'principale'}]->(a1)
-
-
-MERGE (a2:Acteur {nom: 'Johnny Galeki'})
-SET a2.cheveux = 'brun'
-MERGE (a2)-[:JOUE_DANS {role: 'Leonard Hofstadter'}]->(s)
-MERGE (s)-[:IMPORTANCE {importance: 'principale'}]->(a2)
+MERGE (a1:Actor {name: 'Jim Parsons'})
+SET a1.hair = 'brun'
+MERGE (a1)-[:PLAY_IN {character: 'Sheldon Cooper'}]->(s)
+MERGE (s)-[:IMPORTANCE {importance: 'principal'}]->(a1)
 
 
-MERGE (a3:Acteur {nom: 'Kaley Cuoco'})
-SET a3.cheveux = 'blond'
-MERGE (a3)-[:JOUE_DANS {role: 'Penny'}]->(s)
-MERGE (s)-[:IMPORTANCE {importance: 'secondaire'}]->(a3)
+MERGE (a2:Actor {name: 'Johnny Galeki'})
+SET a2.hair = 'brun'
+MERGE (a2)-[:PLAY_IN {character: 'Leonard Hofstadter'}]->(s)
+MERGE (s)-[:IMPORTANCE {importance: 'principal'}]->(a2)
 
 
-MERGE (a4:Acteur {nom: 'Simon Helberg'})
-SET a4.cheveux = 'brun'
-MERGE (a4)-[:JOUE_DANS {role: 'Howard Wolowitz'}]->(s)
-MERGE (s)-[:IMPORTANCE {importance: 'secondaire'}]->(a4)
+MERGE (a3:Actor {name: 'Kaley Cuoco'})
+SET a3.hair = 'blond'
+MERGE (a3)-[:PLAY_IN {character: 'Penny'}]->(s)
+MERGE (s)-[:IMPORTANCE {importance: 'secondary'}]->(a3)
 
 
-MERGE (a5:Acteur {nom: 'Mayim Bialik'})
-SET a5.cheveux = 'brun'
-MERGE (a5)-[:JOUE_DANS {role: 'Amy Farrah Fowler'}]->(s)
-MERGE (s)-[:IMPORTANCE {importance: 'secondaire'}]->(a5)
+MERGE (a4:Actor {name: 'Simon Helberg'})
+SET a4.hair = 'brun'
+MERGE (a4)-[:PLAY_IN {character: 'Howard Wolowitz'}]->(s)
+MERGE (s)-[:IMPORTANCE {importance: 'secondary'}]->(a4)
 
 
-MERGE (a6:Acteur {nom: 'Kunal Nayyar'})
-SET a6.cheveux = 'noir'
-MERGE (a6)-[:JOUE_DANS {role: 'Rajesh Koothrappali'}]->(s)
-MERGE (s)-[:IMPORTANCE {importance: 'terciaire'}]->(a6)
+MERGE (a5:Actor {name: 'Mayim Bialik'})
+SET a5.hair = 'brun'
+MERGE (a5)-[:PLAY_IN {character: 'Amy Farrah Fowler'}]->(s)
+MERGE (s)-[:IMPORTANCE {importance: 'secondary'}]->(a5)
+
+
+MERGE (a6:Actor {name: 'Kunal Nayyar'})
+SET a6.hair = 'noir'
+MERGE (a6)-[:PLAY_IN {character: 'Rajesh Koothrappali'}]->(s)
+MERGE (s)-[:IMPORTANCE {importance: 'tertiary'}]->(a6)
 
 """
 
@@ -67,17 +68,58 @@ driver = GraphDatabase.driver(
 
 
 llm = OpenAILLM(
-    model_name="qwen/qwen-2.5-72b-instruct",          
+    #model_name="qwen/qwen-2.5-72b-instruct",          
     # Alternatives qui marchent aussi très bien :
-    # "mistralai/mistral-small-24b-instruct"
-    # "google/gemini-flash-1.5-exp"
+    #model_name="mistralai/mistral-small-24b-instruct-2501",
+    model_name="google/gemini-2.0-flash-001",
     api_key="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",
     base_url="https://openrouter.ai/api/v1",
     model_params={"temperature": 0.0}
 )
 
+neo4j_shema = """
+    Node properties:
+    Actor {name: STRING, hair: STRING}
+    Serie {name: STRING}
+    Relationship properties:
+    PLAY_IN {character: STRING}
+    IMPORTANCE {importance: STRING}
+    The relationships:
+    (:Actor)-[:PLAY_IN]->(:Serie)
+    (:Serie)-[:IMPORTANCE]->(:Actor)
+    
+"""
 
-retriever = Text2CypherRetriever(driver=driver, llm=llm)
+examples = [
+    """USER INPUT: "What is Penny hair color?"
+QUERY:
+MATCH (a:Actor)-[:PLAY_IN {character: 'Penny'}]->(:Serie)
+RETURN a.hair"""
+]
+
+
+test_cases = [
+    {
+        "question": "What is the Sheldon Cooper hair color?",
+        "expected": "brun"
+    },
+    {
+        "question": "What is Penny hair color?",
+        "expected": "blond"
+    }
+]
+
+
+retriever = Text2CypherRetriever(
+    driver=driver,
+    llm=llm,
+    neo4j_schema=neo4j_shema,
+    examples=examples,
+)
+
+
+query_text = "What is the Sheldon Cooper hair color?"
+print(retriever.search(query_text=query_text))
 
 
 def extract_graph(records):
@@ -129,60 +171,153 @@ def encode_graph_text(nodes, edges):
 
 
 
-def test():  
-    query = "who is the main character in big bang theory"
-    print("Question :", query)
+def evaluate_text2cypher(retriever, test_cases):
+    results = []
 
-    # 1) Génération + exécution du Cypher (tout-en-un)
-    result = retriever.get_search_results(query)  
+    for test in test_cases:
+        question = test["question"]
+        expected = test["expected"]
 
-    # Récupère le Cypher généré depuis les metadata
-    generated_cypher = result.metadata.get("generated_cypher", "Inconnu (pas dans metadata)")
-    print("\n=== Cypher généré ===\n")
-    print(generated_cypher)
+        start_time = time.time()
 
-    # 2) Les records sont déjà exécutés et disponibles !
-    records = result.records  # ← Directement ici, pas besoin de re-exécuter
+        response = retriever.search(query_text=question)
 
-    if not records:
-        print("Aucun résultat retourné par la requête Cypher.")
-        return
+        end_time = time.time()
 
-    # 3) Extraction du graphe (je garde une version robuste améliorée)
-    nodes, edges = extract_graph(records)
-    graph_text = encode_graph_text(nodes, edges)
+        total_time = end_time - start_time
 
-    print("\n=== Sous-graphe encodé ===\n")
-    print(graph_text)
+        # récupération réponse texte
+        if response and response.items:
+            answer = response.items[0].content
+        else:
+            answer = None
 
-    # 4) Prompt avec graphe
-    graph_prompt = f"""
-You are given a knowledge graph extracted from Neo4j.
 
-Graph:
-{graph_text}
+        correct = expected.lower() in str(answer).lower()
 
-Question:
-{query}
+        results.append({
+            "question": question,
+            "expected": expected,
+            "answer": answer,
+            "correct": correct,
+            "total_time_sec": round(total_time, 3)
+        })
 
-Answer using only the information in the graph. Be concise.
-"""
+    return results
 
-    graph_answer = asyncio.run(llm.acall(graph_prompt))
-    print("\n=== Réponse AVEC graphe ===\n")
-    print(graph_answer.content if hasattr(graph_answer, "content") else graph_answer)
 
-    # 5) Baseline
-    baseline_prompt = f"Answer the question concisely:\n{query}"
-    baseline_answer = asyncio.run(llm.acall(baseline_prompt))
-    print("\n=== Réponse SANS graphe ===\n")
-    print(baseline_answer.content if hasattr(baseline_answer, "content") else baseline_answer)
+#test avec graphe
+results = evaluate_text2cypher(retriever, test_cases)
 
-if __name__ == "__main__":
-    print("Connexion en cours avec user:", DATABASE_AUTH)
-    test() 
-    driver.close()
-    print("\nFin du script – tout s'est bien passé !")
+for r in results:
+    print(r)
+
+
+def extract_text_from_llm_response(resp):
+    if hasattr(resp, "text"):
+        return resp.text
+    return str(resp)
+
+
+
+def ask_llm_only(llm, question):
+    start_time = time.time()
+
+    response = llm.invoke(question)
+
+    end_time = time.time()
+
+    answer_text = extract_text_from_llm_response(response)
+
+    return {
+        "answer": answer_text,
+        "time_sec": round(end_time - start_time, 3)
+    }
+
+
+
+def evaluate_llm_only(llm, test_cases):
+    results = []
+
+    for test in test_cases:
+        question = test["question"]
+        expected = test["expected"]
+    
+        result = ask_llm_only(llm, question)
+
+        correct = expected.lower() in result["answer"].lower()
+
+        results.append({
+            "question": question,
+            "expected": expected,
+            "answer": result["answer"],
+            "correct": correct,
+            "time_sec": result["time_sec"]
+        })
+
+    return results
+
+
+#pour le test sans graphe
+# results = evaluate_llm_only(llm,test_cases)
+
+# for r in results:
+#     print(r)
+
+
+# def test():  
+#     query = "who play Leonard in big bang theory?"
+#     print("Question :", query)
+
+#     result = retriever.get_search_results(query)  
+
+#     generated_cypher = result.metadata.get("generated_cypher", "Inconnu (pas dans metadata)")
+#     print("\nCypher généré par le retriever\n")
+
+#     records = result.records  
+
+#     if not records:
+#         print("Aucun résultat retourné par la requête Cypher.")
+#         return
+
+#     nodes, edges = extract_graph(records)
+#     print(nodes)
+#     graph_text = encode_graph_text(nodes, edges)
+
+#     print("\n=== Sous-graphe encodé ===\n")
+#     print(graph_text)
+
+#     # Prompt avec graphe
+#     graph_prompt = f"""
+# You are given a knowledge graph extracted from Neo4j.
+
+# Graph:
+# {graph_text}
+
+# Question:
+# {query}
+
+# Answer using only the information in the graph. Be concise.
+# """
+
+#     graph_answer = asyncio.run(llm.acall(graph_prompt))
+#     print("\n=== Réponse AVEC graphe ===\n")
+#     print(graph_answer.content if hasattr(graph_answer, "content") else graph_answer)
+
+#     # 5) Baseline
+#     baseline_prompt = f"Answer the question concisely:\n{query}"
+#     baseline_answer = asyncio.run(llm.acall(baseline_prompt))
+#     print("\n=== Réponse SANS graphe ===\n")
+#     print(baseline_answer.content if hasattr(baseline_answer, "content") else baseline_answer)
+
+
+# if __name__ == "__main__":
+#     with driver.session() as session:
+#         session.run(graph_use)
+#         print("Graphe injecté dans Neo4j !")
+#     test() 
+#     driver.close()
+#     print("\nFin du script – tout s'est bien passé !")
 
 
 
