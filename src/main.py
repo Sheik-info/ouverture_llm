@@ -14,12 +14,6 @@ import encoding as en
 #---------------------------------------------------------------------------------
 
 
-databases_graphs = [
-    "neo4j",
-    "stackoverflow-50", 
-    "recommendations-5.26"
-]
-
 graphs_tests = {
     "stackoverflow-50" : 
         {
@@ -65,13 +59,16 @@ def generateGraphsFiles(global_path : str, rewrite : bool = False) :
             try : 
                 con.createGraphFile(
                     driver=driver, 
-                    database=databases_graphs[1], 
+                    database=graph, 
                     limit=file_names[file], 
                     file_path=f"{global_path}/{file}.json", 
                     rewrite=rewrite
                 )
             except ValueError as error :
                 print(error)
+            except Exception as error :
+                print("An error occured : ", error)
+                generateGraphsFiles(global_path, rewrite) #we retry until we have all files 
 
 
 def testGraphs(global_path : str) :
@@ -89,6 +86,7 @@ def testGraphs(global_path : str) :
 
             except ValueError as error :
                 print(error)       
+                
 
 #---------------------------------------------------------------------------------
 #-------------------------------- MAIN PROGRAM

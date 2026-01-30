@@ -63,14 +63,14 @@ def createGraphFile(driver : neo4j.Driver, database : str, limit : int, file_pat
     rand_ids = getRandomIds(driver, database, limit)
     graph = getGraphFromIds(driver, database, limit, rand_ids)
 
-    with open(file_path, "w") as file:
-        json.dump(graph, file)
+    with open(file_path, "w", encoding="utf8") as file:
+        json.dump(graph, file, ensure_ascii=False)
 
 
 def getGraphFromFile(file_path : str) -> list : 
     graph = {}
     with open(file_path) as file:
-        graph = json.load(file)
+        graph = json.loads(file.read())
 
     records = []
     for record in graph.keys() : 
