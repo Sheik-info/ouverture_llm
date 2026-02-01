@@ -77,3 +77,4 @@ def getGraphFromFile(file_path : str) -> list :
         records.append(graph[record])
 
     return records
+

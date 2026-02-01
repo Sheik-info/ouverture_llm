@@ -20,20 +20,20 @@ graphs_tests = {
             "file_names" : 
             {
                 "stackoverflow_4" : 4,
-                "stackoverflow_12" : 12,
+                #"stackoverflow_12" : 12,
                 #"stackoverflow_20" : 20
             },
-            "queries" : []
+            "queries" : ["Who has answered multiple times to a question?"]
         },
     "recommendations-5.26" : 
         {
             "file_names" : 
             {
                 "recommendations_4" : 4,
-                "recommendations_12" : 12,
+                #"recommendations_12" : 12,
                 #"recommendations_20" : 20
             },
-            "queries" : []
+            "queries" : ["Who has made multiple recommendations?"]
         }
 }
 
@@ -53,6 +53,11 @@ def generateGraphsFiles(global_path : str, rewrite : bool = False) :
         Files are all stored in global_path
 
     """
+    driver = GraphDatabase.driver(
+            DATABASE_HOST,
+            auth=basic_auth(DATABASE_AUTH, DATABASE_PWD)
+        )
+
     for graph in graphs_tests.keys() :
         file_names = graphs_tests[graph]["file_names"]
         for file in file_names : 
@@ -69,9 +74,11 @@ def generateGraphsFiles(global_path : str, rewrite : bool = False) :
             except Exception as error :
                 print("An error occured : ", error)
                 generateGraphsFiles(global_path, rewrite) #we retry until we have all files 
+    
+    driver.close()
 
 
-def testGraphs(global_path : str) :
+def testGraphs(global_path : str, option : str) :
     for graph in graphs_tests.keys() :
         file_names = graphs_tests[graph]["file_names"]
         for file in file_names : 
@@ -81,8 +88,8 @@ def testGraphs(global_path : str) :
                 print(records)
 
                 # TODO : A DECOMMENTER QUAND IA
-                # for query in graph["queries"] : 
-                #     en.test(query=query, records=records)
+                for query in graphs_tests[graph]["queries"] : 
+                    en.test(query=query, records=records, option=option)
 
             except ValueError as error :
                 print(error)       
@@ -99,18 +106,15 @@ if __name__ == "__main__" :
     DATABASE_AUTH = os.getenv("DATABASE_AUTH")
     DATABASE_PWD = os.getenv("DATABASE_PWD")
     DATABASE_HOST = os.getenv("DATABASE_HOST")
-    
+    LLM_OPTION = os.getenv("LLM_OPTION")
+    GENERATE_GRAPHS = True if os.getenv("GENERATE_GRAPHS") == "TRUE" else False
+
     try : 
-        driver = GraphDatabase.driver(
-            DATABASE_HOST,
-            auth=basic_auth(DATABASE_AUTH, DATABASE_PWD)
-        )
+        if GENERATE_GRAPHS : 
+            generateGraphsFiles(global_path="graphs") # We save it all in graphs/      
+        
+        testGraphs(global_path="graphs", option=LLM_OPTION)
 
-        global_path="graphs"
-        generateGraphsFiles(global_path=global_path) # We save it all in graphs/      
-        testGraphs(global_path=global_path)
-
-        driver.close()
 
     except ClientError as error :
         print("Connection error : " + error.message)

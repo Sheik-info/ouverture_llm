@@ -1,22 +1,86 @@
-# test.py
+# NEO4J
 from neo4j_graphrag.retrievers import Text2CypherRetriever
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
-import time
 import nest_asyncio
+# TRANSFORMERS
+from transformers import AutoTokenizer, AutoModelForCausalLM
+# TESTS
+import time
 
 # Permet d'utiliser asyncio.run() même dans Jupyter ou quand un loop existe déjà
 nest_asyncio.apply()
 
-llm = OpenAILLM(
-    #model_name="qwen/qwen-2.5-72b-instruct",          
-    # Alternatives qui marchent aussi très bien :
-    #model_name="mistralai/mistral-small-24b-instruct-2501",
-    model_name="google/gemini-2.0-flash-001",
-    api_key="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",
-    base_url="https://openrouter.ai/api/v1",
-    model_params={"temperature": 0.0}
-)
+
+#---------------------------------------------------------------------------------
+#-------------------------------- LLMs
+#---------------------------------------------------------------------------------
+
+
+def queryTransformer(prompt : str) :
+    # Load model directly
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
+    model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct").to("cuda")
+    inputs = tokenizer.apply_chat_template(
+        [{"role": "user", "content": prompt}],
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt",
+    ).to(model.device)
+
+    outputs = model.generate(**inputs, max_new_tokens=150)
+    return tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:])
+
+
+def queryOpenAiLLM(prompt : str) : 
+    llm = OpenAILLM(
+        #model_name="qwen/qwen-2.5-72b-instruct",          
+        # Alternatives qui marchent aussi très bien :
+        #model_name="mistralai/mistral-small-24b-instruct-2501",
+        model_name="google/gemini-2.0-flash-001",
+        api_key="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",
+        base_url="https://openrouter.ai/api/v1",
+        model_params={"temperature": 0.0}
+    )
+
+    return asyncio.run(llm.acall(prompt))
+
+
+def queryLLLM(prompt : str, option : str = "API") -> str: 
+    """
+    Returns the appropriate LLM generated response from prompt.
+    """
+    if option == "API" : 
+        return queryOpenAiLLM(graph_prompt)
+    elif option == "LOCAL" : 
+        return queryTransformer(graph_prompt)
+    else :
+        raise ValueError("Option of LLM isn't defined.")
+
+
+
+def ask_llm_only(llm, question):
+    start_time = time.time()
+
+    response = llm.invoke(question)
+
+    end_time = time.time()
+
+    answer_text = extract_text_from_llm_response(response)
+
+    return {
+        "answer": answer_text,
+        "time_sec": round(end_time - start_time, 3)
+    }
+
+
+#---------------------------------------------------------------------------------
+#-------------------------------- ENCODING
+#---------------------------------------------------------------------------------
+
 
 def extract_graph(records):
     nodes = {}
@@ -66,6 +130,16 @@ def encode_graph_text(nodes, edges):
     return "\n".join(lines)
 
 
+def extract_text_from_llm_response(resp):
+    if hasattr(resp, "text"):
+        return resp.text
+    return str(resp)
+
+
+#---------------------------------------------------------------------------------
+#-------------------------------- EVALUATION
+#---------------------------------------------------------------------------------
+
 
 def evaluate_text2cypher(retriever, test_cases):
     results = []
@@ -102,29 +176,6 @@ def evaluate_text2cypher(retriever, test_cases):
     return results
 
 
-def extract_text_from_llm_response(resp):
-    if hasattr(resp, "text"):
-        return resp.text
-    return str(resp)
-
-
-
-def ask_llm_only(llm, question):
-    start_time = time.time()
-
-    response = llm.invoke(question)
-
-    end_time = time.time()
-
-    answer_text = extract_text_from_llm_response(response)
-
-    return {
-        "answer": answer_text,
-        "time_sec": round(end_time - start_time, 3)
-    }
-
-
-
 def evaluate_llm_only(llm, test_cases):
     results = []
 
@@ -147,7 +198,7 @@ def evaluate_llm_only(llm, test_cases):
     return results
 
 
-def test(query : str, records : list):  
+def test(query : str, records : list, option : str = "API"):  
     # query = "who play Leonard in big bang theory?"
     # print("Question :", query)
     # result = retriever.get_search_results(query)  
@@ -158,9 +209,13 @@ def test(query : str, records : list):
     #     print("Aucun résultat retourné par la requête Cypher.")
     #     return
 
-    nodes, edges = extract_graph(records)
-    print(nodes)
-    graph_text = encode_graph_text(nodes, edges)
+
+    # TODO : uncomment
+    # nodes, edges = extract_graph(records)
+    # print(nodes)
+    # graph_text = encode_graph_text(nodes, edges)
+
+    graph_text = str(records)
 
     print("\n=== Sous-graphe encodé ===\n")
     print(graph_text)
@@ -178,13 +233,14 @@ def test(query : str, records : list):
     Answer using only the information in the graph. Be concise.
     """
 
-    graph_answer = asyncio.run(llm.acall(graph_prompt))
+    graph_answer = queryLLLM(graph_prompt, option)
     print("\n=== Réponse AVEC graphe ===\n")
     print(graph_answer.content if hasattr(graph_answer, "content") else graph_answer)
 
     # 5) Baseline
     baseline_prompt = f"Answer the question concisely:\n{query}"
-    baseline_answer = asyncio.run(llm.acall(baseline_prompt))
+
+    baseline_answer = queryLLLM(graph_prompt, option)
     print("\n=== Réponse SANS graphe ===\n")
     print(baseline_answer.content if hasattr(baseline_answer, "content") else baseline_answer)
 
