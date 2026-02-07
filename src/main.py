@@ -105,7 +105,7 @@ if __name__ == "__main__" :
     DATABASE_AUTH = os.getenv("DATABASE_AUTH")
     DATABASE_PWD = os.getenv("DATABASE_PWD")
     DATABASE_HOST = os.getenv("DATABASE_HOST")
-    LLM_OPTION = os.getenv("LLM_OPTION") # LOCAL or API
+    LLM_OPTION = os.getenv("LLM_OPTION") if os.getenv("LLM_OPTION") != None else "API" # LOCAL or API
     GENERATE_GRAPHS = True if os.getenv("GENERATE_GRAPHS") == "TRUE" else False # TRUE or FALSE
 
     try : 
