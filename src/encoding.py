@@ -1,10 +1,11 @@
+# ENV VARIABLES
+from dotenv import load_dotenv
+import os
 # NEO4J
 from neo4j_graphrag.retrievers import Text2CypherRetriever
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 import nest_asyncio
-# TRANSFORMERS
-from transformers import AutoTokenizer, AutoModelForCausalLM
 # TESTS
 import time
 
@@ -17,25 +18,19 @@ nest_asyncio.apply()
 #---------------------------------------------------------------------------------
 
 
-def queryTransformer(prompt : str) :
-    # Load model directly
-    from transformers import AutoTokenizer, AutoModelForCausalLM
-
-    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
-    model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct").to("cuda")
-    inputs = tokenizer.apply_chat_template(
-        [{"role": "user", "content": prompt}],
-        add_generation_prompt=True,
-        tokenize=True,
-        return_dict=True,
-        return_tensors="pt",
-    ).to(model.device)
-
-    outputs = model.generate(**inputs, max_new_tokens=150)
-    return tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:])
+def queryOllama(prompt : str) -> str:
+    from ollama import chat, ChatResponse
+    
+    response: ChatResponse = chat(model='llama3.2:3b', messages=[
+    {
+        'role': 'user',
+        'content': prompt,
+    },
+    ])
+    return response.message.content
 
 
-def queryOpenAiLLM(prompt : str) : 
+def queryOpenAiLLM(prompt : str) -> str: 
     llm = OpenAILLM(
         #model_name="qwen/qwen-2.5-72b-instruct",          
         # Alternatives qui marchent aussi très bien :
@@ -54,9 +49,9 @@ def queryLLLM(prompt : str, option : str = "API") -> str:
     Returns the appropriate LLM generated response from prompt.
     """
     if option == "API" : 
-        return queryOpenAiLLM(graph_prompt)
+        return queryOpenAiLLM(prompt)
     elif option == "LOCAL" : 
-        return queryTransformer(graph_prompt)
+        return queryOllama(prompt)
     else :
         raise ValueError("Option of LLM isn't defined.")
 
@@ -211,11 +206,11 @@ def test(query : str, records : list, option : str = "API"):
 
 
     # TODO : uncomment
-    # nodes, edges = extract_graph(records)
-    # print(nodes)
-    # graph_text = encode_graph_text(nodes, edges)
+    nodes, edges = extract_graph(records)
+    print(nodes)
+    graph_text = encode_graph_text(nodes, edges)
 
-    graph_text = str(records)
+    #graph_text = str(records)
 
     print("\n=== Sous-graphe encodé ===\n")
     print(graph_text)

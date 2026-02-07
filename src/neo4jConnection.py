@@ -43,7 +43,7 @@ def getGraphFromIds(driver : neo4j.Driver, database : str, limit : int, random_i
         graph = {}
 
         # Loop through results and do something with them
-        for record, i in zip(records, range(len(records))):  
+        for record, i in zip(records, range(len(records))): 
             graph[i] = record.data()
 
         return graph
@@ -55,7 +55,7 @@ def getGraphFromIds(driver : neo4j.Driver, database : str, limit : int, random_i
 def createGraphFile(driver : neo4j.Driver, database : str, limit : int, file_path : str, rewrite : bool = False) :
     if not rewrite :
         if Path(file_path).is_file() : 
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 first_char = file.read(1)
                 if first_char : 
                     raise ValueError("File already exists and is not empty.")
@@ -64,12 +64,13 @@ def createGraphFile(driver : neo4j.Driver, database : str, limit : int, file_pat
     graph = getGraphFromIds(driver, database, limit, rand_ids)
 
     with open(file_path, "w", encoding="utf8") as file:
+        print("graph ", file_path, " : \n", graph, "\n\n")
         json.dump(graph, file, ensure_ascii=False)
 
 
 def getGraphFromFile(file_path : str) -> list : 
     graph = {}
-    with open(file_path) as file:
+    with open(file_path, encoding="utf-8") as file:
         graph = json.loads(file.read())
 
     records = []

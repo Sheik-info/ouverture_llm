@@ -1,7 +1,6 @@
 # ENV VARIABLES
 from dotenv import load_dotenv
 import os
-import ast
 # NEO4J
 import neo4jConnection as con
 from neo4j import GraphDatabase, basic_auth
@@ -20,7 +19,7 @@ graphs_tests = {
             "file_names" : 
             {
                 "stackoverflow_4" : 4,
-                #"stackoverflow_12" : 12,
+                "stackoverflow_12" : 12,
                 #"stackoverflow_20" : 20
             },
             "queries" : ["Who has answered multiple times to a question?"]
@@ -29,7 +28,7 @@ graphs_tests = {
         {
             "file_names" : 
             {
-                "recommendations_4" : 4,
+                #"recommendations_4" : 4,
                 #"recommendations_12" : 12,
                 #"recommendations_20" : 20
             },
@@ -106,13 +105,14 @@ if __name__ == "__main__" :
     DATABASE_AUTH = os.getenv("DATABASE_AUTH")
     DATABASE_PWD = os.getenv("DATABASE_PWD")
     DATABASE_HOST = os.getenv("DATABASE_HOST")
-    LLM_OPTION = os.getenv("LLM_OPTION")
-    GENERATE_GRAPHS = True if os.getenv("GENERATE_GRAPHS") == "TRUE" else False
+    LLM_OPTION = os.getenv("LLM_OPTION") # LOCAL or API
+    GENERATE_GRAPHS = True if os.getenv("GENERATE_GRAPHS") == "TRUE" else False # TRUE or FALSE
 
     try : 
         if GENERATE_GRAPHS : 
             generateGraphsFiles(global_path="graphs") # We save it all in graphs/      
         
+        print("\n=== Graphs LLM test ===\n")
         testGraphs(global_path="graphs", option=LLM_OPTION)
 
 
