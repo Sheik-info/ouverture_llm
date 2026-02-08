@@ -31,12 +31,16 @@ def queryOllama(prompt : str) -> str:
 
 
 def queryOpenAiLLM(prompt : str) -> str: 
+
+    load_dotenv()
+    OPEN_ROUTER_KEY = os.getenv("OPEN_ROUTER_KEY")
+
     llm = OpenAILLM(
         #model_name="qwen/qwen-2.5-72b-instruct",          
         # Alternatives qui marchent aussi très bien :
         #model_name="mistralai/mistral-small-24b-instruct-2501",
         model_name="google/gemini-2.0-flash-001",
-        api_key="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",
+        api_key=OPEN_ROUTER_KEY,
         base_url="https://openrouter.ai/api/v1",
         model_params={"temperature": 0.0}
     )
