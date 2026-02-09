@@ -3,10 +3,10 @@
 
 Ce projet d'ouverture à la recherche contient le code source utilisé pour l'évaluation des fonctions d'encodages de graphes de propriétés dans le cas d'analyse par des Large Language Models. 
 
-### Branche Main
+### Partie 1
 
-Se trouve sur la branche main le code concernant le test approfondi des différentes méthodes d'encodages.
+Se trouve dans le dossier src/Part-1 le code concernant le test approfondi des différentes méthodes d'encodages.
 
-### Branche feature/subgraph
+### Partoe 2
 
-Se trouve sur la branche feature/subgraph le code concernant l'automatisation de la récupération de graphes à partir d'une base neo4J, du déploiement de LLM et des fonctions d'encodages associées. 
+Se trouve dans le dossier src/Part-2 le code concernant l'automatisation de la récupération de graphes à partir d'une base neo4J, du déploiement de LLM et des fonctions d'encodages associées. 
