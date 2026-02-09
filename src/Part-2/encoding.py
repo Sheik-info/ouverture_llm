@@ -96,121 +96,36 @@ def encode_expert_from_p_records(records) :
 
     return graph
 
+def encode_adjency_from_p_records(records) : 
+    return ""
 
-def extract_graph(records):
-    nodes = {}
-    edges = []
-
-    for r in records:
-        #MATCH p = ( ... ) RETURN p
-        path = r["p"]
-        for node in path.nodes:
-            #récupère la propriété du noeud
-            nodes[node.id] = dict(node)
-        for rel in path.relationships:
-            edges.append({
-                #type donné à l'edge :truc
-                "type": rel.type,
-                #noeud de départ
-                "from": rel.start_node.id,
-                #noeud d'arrivée
-                "to": rel.end_node.id,
-                #données interne comme l'importance
-                "properties": dict(rel)
-            })
-
-    return nodes, edges
+def encode_edgeList_from_p_records(records) : 
+    return ""
 
 
-#on encode pour que ça soit compréhensible pour le llm
-def encode_graph_text(nodes, edges):
-    #une ligne par relation 
-    #noeud -> edge -> noeud
-    lines = []
+# def extract_graph(records):
+#     nodes = {}
+#     edges = []
 
-    for edge in edges:
-        #on récupère la source et la destination pour chanque noeud
-        src = nodes[edge["from"]]
-        dst = nodes[edge["to"]]
+#     for r in records:
+#         #MATCH p = ( ... ) RETURN p
+#         path = r["p"]
+#         for node in path.nodes:
+#             #récupère la propriété du noeud
+#             nodes[node.id] = dict(node)
+#         for rel in path.relationships:
+#             edges.append({
+#                 #type donné à l'edge :truc
+#                 "type": rel.type,
+#                 #noeud de départ
+#                 "from": rel.start_node.id,
+#                 #noeud d'arrivée
+#                 "to": rel.end_node.id,
+#                 #données interne comme l'importance
+#                 "properties": dict(rel)
+#             })
 
-        #j'aurais du mettre name au lieu de nom ici mais pas grâve
-        src_name = src.get("nom", "Unknown")
-        dst_name = dst.get("nom", "Unknown")
-
-        line = f"{src_name} --{edge['type']}--> {dst_name}"
-        if edge["properties"]:
-            line += f" {edge['properties']}"
-        lines.append(line)
-
-    return "\n".join(lines)
-
-
-def extract_text_from_llm_response(resp):
-    if hasattr(resp, "text"):
-        return resp.text
-    return str(resp)
-
-
-#---------------------------------------------------------------------------------
-#-------------------------------- EVALUATION
-#---------------------------------------------------------------------------------
-
-
-def evaluate_text2cypher(retriever, test_cases):
-    results = []
-
-    for test in test_cases:
-        question = test["question"]
-        expected = test["expected"]
-
-        start_time = time.time()
-
-        response = retriever.search(query_text=question)
-
-        end_time = time.time()
-
-        total_time = end_time - start_time
-
-        # récupération réponse texte
-        if response and response.items:
-            answer = response.items[0].content
-        else:
-            answer = None
-
-
-        correct = expected.lower() in str(answer).lower()
-
-        results.append({
-            "question": question,
-            "expected": expected,
-            "answer": answer,
-            "correct": correct,
-            "total_time_sec": round(total_time, 3)
-        })
-
-    return results
-
-
-def evaluate_llm_only(llm, test_cases):
-    results = []
-
-    for test in test_cases:
-        question = test["question"]
-        expected = test["expected"]
-    
-        result = ask_llm_only(llm, question)
-
-        correct = expected.lower() in result["answer"].lower()
-
-        results.append({
-            "question": question,
-            "expected": expected,
-            "answer": result["answer"],
-            "correct": correct,
-            "time_sec": result["time_sec"]
-        })
-
-    return results
+#     return nodes, edges
 
 
 def test(query : str, records : list, option : str = "API"):  
@@ -237,3 +152,4 @@ def test(query : str, records : list, option : str = "API"):
     graph_answer = queryLLLM(graph_prompt, option)
 
     print("=== LLM answer ===")
+    print(graph_answer)
