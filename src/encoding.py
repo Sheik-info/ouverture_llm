@@ -30,21 +30,24 @@ def queryOllama(prompt : str) -> str:
     return response.message.content
 
 
-def queryOpenAiLLM(prompt : str) -> str: 
-
+def getOpenAiLLM() :
     load_dotenv()
     OPEN_ROUTER_KEY = os.getenv("OPEN_ROUTER_KEY")
 
-    llm = OpenAILLM(
-        #model_name="qwen/qwen-2.5-72b-instruct",          
+    return OpenAILLM(
+        model_name="qwen/qwen-2.5-72b-instruct",          
         # Alternatives qui marchent aussi très bien :
         #model_name="mistralai/mistral-small-24b-instruct-2501",
-        model_name="google/gemini-2.0-flash-001",
-        api_key=OPEN_ROUTER_KEY,
-        base_url="https://openrouter.ai/api/v1",
+        #model_name="google/gemini-2.0-flash-001",
+        #api_key=OPEN_ROUTER_KEY,
+        #base_url="https://openrouter.ai/api/v1",
+        api_key="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",
         model_params={"temperature": 0.0}
     )
 
+
+def queryOpenAiLLM(prompt : str) -> str: 
+    llm = getOpenAiLLM()
     return asyncio.run(llm.acall(prompt))
 
 
@@ -79,6 +82,19 @@ def ask_llm_only(llm, question):
 #---------------------------------------------------------------------------------
 #-------------------------------- ENCODING
 #---------------------------------------------------------------------------------
+
+
+def encode_expert_from_p_records(records) :
+    graph = ""
+    for record in records : 
+        #print(record)
+        node1 = record["p"][0]
+        relation = record["p"][1]
+        node2 = record["p"][2]
+        
+        graph += f"Node({node1}) <== {relation} ==> Node({node2})\n\n"
+
+    return graph
 
 
 def extract_graph(records):
@@ -198,59 +214,26 @@ def evaluate_llm_only(llm, test_cases):
 
 
 def test(query : str, records : list, option : str = "API"):  
-    # query = "who play Leonard in big bang theory?"
-    # print("Question :", query)
-    # result = retriever.get_search_results(query)  
-    # generated_cypher = result.metadata.get("generated_cypher", "Inconnu (pas dans metadata)")
-    # print("\nCypher généré par le retriever\n")
-    # records = result.records  
-    # if not records:
-    #     print("Aucun résultat retourné par la requête Cypher.")
-    #     return
 
+    graph_text = encode_expert_from_p_records(records)
 
-    # TODO : uncomment
-    nodes, edges = extract_graph(records)
-    print(nodes)
-    graph_text = encode_graph_text(nodes, edges)
-
-    #graph_text = str(records)
-
-    print("\n=== Sous-graphe encodé ===\n")
+    print("\n=== Encoded Graph ===\n")
+    
     print(graph_text)
 
     # Prompt avec graphe
     graph_prompt = f"""
     You are given a knowledge graph extracted from Neo4j.
 
-    Graph:
-    {graph_text}
-
     Question:
     {query}
+
+    Graph:
+    {graph_text}
 
     Answer using only the information in the graph. Be concise.
     """
 
     graph_answer = queryLLLM(graph_prompt, option)
-    print("\n=== Réponse AVEC graphe ===\n")
-    print(graph_answer.content if hasattr(graph_answer, "content") else graph_answer)
 
-    # 5) Baseline
-    baseline_prompt = f"Answer the question concisely:\n{query}"
-
-    baseline_answer = queryLLLM(graph_prompt, option)
-    print("\n=== Réponse SANS graphe ===\n")
-    print(baseline_answer.content if hasattr(baseline_answer, "content") else baseline_answer)
-
-
-
-# Démarrer le conteneur
-# podman start neo4j-apoc
-
-# Redémarrer le conteneur
-# podman restart neo4j-apoc
-
-# podman stop neo4j-apoc
-
-# neo4j
+    print("=== LLM answer ===")
