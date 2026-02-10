@@ -3,7 +3,8 @@ from neo4j import GraphDatabase, basic_auth
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 from dotenv import load_dotenv
-import time
+from eval import *
+from encode import *
 import nest_asyncio
 import os
 
@@ -59,7 +60,7 @@ MERGE (s)-[:IMPORTANCE {importance: 'tertiary'}]->(a6)
 """
 
 GRAPH_QUERY = """
-MATCH p = (a:Actor)-[r]->(s:Serie)
+MATCH p = (a:Actor)-[r]->(s:Serie)  
 RETURN p
 """
 
@@ -71,12 +72,11 @@ driver = GraphDatabase.driver(
     auth=basic_auth(DATABASE_AUTH, DATABASE_PWD)
 )
 
-
 llm = OpenAILLM(
-    #model_name="qwen/qwen-2.5-72b-instruct",          
-    # Alternatives qui marchent aussi très bien :
+    #Alternatives qui marchent aussi très bien :
+    model_name="qwen/qwen-2.5-72b-instruct",          
     #model_name="mistralai/mistral-small-24b-instruct-2501",
-    model_name="google/gemini-2.0-flash-001",
+    #model_name="google/gemini-2.0-flash-001",
     api_key="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",
     base_url="https://openrouter.ai/api/v1",
     model_params={"temperature": 0.0}
@@ -128,125 +128,13 @@ def extract_graph(records):
     return nodes, edges
 
 
-def encode_graph_text(nodes, edges):
-    lines = []
-
-    for edge in edges:
-        src = nodes[edge["from"]]
-        dst = nodes[edge["to"]]
-
-        src_name = src.get("name", "Unknown")
-        dst_name = dst.get("name", "Unknown")
-
-        line = f"{src_name} --{edge['type']}--> {dst_name}"
-        if edge["properties"]:
-            line += f" {edge['properties']}"
-
-        lines.append(line)
-
-    return "\n".join(lines)
-
-
-
-
-
-def evaluate_llm_without_graph(llm, test_cases):
-    results = []
-
-    for test in test_cases:
-        question = test["question"]
-        expected = test["expected"]
-
-        start = time.time()
-        response = llm.invoke(question)
-
-        if hasattr(response, "content"):
-            answer = response.content
-        elif hasattr(response, "message"):
-            answer = response.message
-        elif hasattr(response, "choices"):
-            answer = response.choices[0].message.content
-        else:
-            answer = str(response)
-
-        elapsed = round(time.time() - start, 3)
-        correct = expected.lower() in answer.lower()
-
-        results.append({
-            "mode": "llm_only",
-            "question": question,
-            "expected": expected,
-            "answer": answer,
-            "correct": correct,
-            "time_sec": elapsed
-        })
-
-    return results
-
-
-def evaluate_llm_with_graph(llm, graph_text, test_cases):
-    results = []
-
-    for test in test_cases:
-        question = test["question"]
-        expected = test["expected"]
-
-        prompt = f"""
-You are given a graph extracted from a Neo4j database.
-
-Graph:
-{graph_text}
-
-Question:
-{question}
-
-Answer using only the information in the graph.
-Be concise and precise.
-"""
-
-        start = time.time()
-        response = llm.invoke(prompt)
-
-        if hasattr(response, "content"):
-            answer = response.content
-        elif hasattr(response, "message"):
-            answer = response.message
-        elif hasattr(response, "choices"):
-            answer = response.choices[0].message.content
-        else:
-            answer = str(response)
-
-        elapsed = round(time.time() - start, 3)
-        correct = expected.lower() in answer.lower()
-
-        results.append({
-            "mode": "llm_with_graph",
-            "question": question,
-            "expected": expected,
-            "answer": answer,
-            "correct": correct,
-            "time_sec": elapsed
-        })
-
-    return results
-
-
-def eval_global_llm(llm, graph_text, test_cases):
-    results = []
-
-    results.extend(evaluate_llm_without_graph(llm, test_cases))
-    results.extend(evaluate_llm_with_graph(llm, graph_text, test_cases))
-
-    return results
-
-
 
 
 with driver.session() as session:
     records = session.run(GRAPH_QUERY)
 
     nodes, edges = extract_graph(records)
-    graph_text = encode_graph_text(nodes, edges)
+    graph_text = encode_graph_incidence(nodes, edges)
 
     results = eval_global_llm(llm, graph_text, test_cases)
 
@@ -256,14 +144,3 @@ with driver.session() as session:
 driver.close()
 
 
-
-
-## Démarrer le conteneur
-#podman start neo4j-apoc
-
-# Redémarrer le conteneur
-#podman restart neo4j-apoc
-
-#podman stop neo4j-apoc
-
-#neo4j
