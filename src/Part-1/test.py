@@ -13,9 +13,9 @@ nest_asyncio.apply()
 
 # Load environment variables
 load_dotenv()
-DATABASE_AUTH = os.getenv("DATABASE_AUTH", "neo4j")
-DATABASE_PWD = os.getenv("DATABASE_PWD", "boc23102002")
-DATABASE_PORT = os.getenv("DATABASE_PORT", "7687")
+DATABASE_AUTH = os.getenv("DATABASE_AUTH")
+DATABASE_PWD = os.getenv("DATABASE_PWD")
+DATABASE_PORT = os.getenv("DATABASE_PORT")
 
 
 
@@ -144,12 +144,3 @@ with driver.session() as session:
 driver.close()
 
 
-
-
-## Démarrer le conteneur
-#podman start neo4j-apoc
-
-# Redémarrer le conteneur
-#podman restart neo4j-apoc
-
-#podman stop neo4j-apoc
