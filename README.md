@@ -7,6 +7,6 @@ Ce projet d'ouverture à la recherche contient le code source utilisé pour l'é
 
 Se trouve dans le dossier src/Part-1 le code concernant le test approfondi des différentes méthodes d'encodages.
 
-### Partoe 2
+### Partie 2
 
-Se trouve dans le dossier src/Part-2 le code concernant l'automatisation de la récupération de graphes à partir d'une base neo4J, du déploiement de LLM et des fonctions d'encodages associées. 
+Se trouve dans le dossier src/Part-2 le code concernant l'automatisation de la récupération de graphes à partir d'une base neo4J et de l'encodage de graphes. 
