@@ -97,10 +97,39 @@ def encode_expert_from_p_records(records) :
     return graph
 
 def encode_adjency_from_p_records(records) : 
-    return ""
+    graph = "Adjency{\n"
+    for record in records : 
+        node1 = record["p"][0]
+        node2 = record["p"][2]
+        
+        graph += f"(Node({node1}), Node({node2})),\n\n"
+    graph += "}"
+
+    return graph
+
 
 def encode_edgeList_from_p_records(records) : 
-    return ""
+    graph = "EdgeList{\n"
+    for record in records : 
+        main = record["p"][0]
+        graph += f"Node({main}) : "
+        edgeList = []
+        for record2 in records : 
+            node1 = record["p"][0]
+            node2 = record["p"][2]
+
+            if (node1 == main and node2 not in edgeList) :
+                graph += f"Node({node2}),"
+                edgeList.append(node2)
+            elif (node2 == main and node1 not in edgeList) :
+                graph += f"Node({node1}),"
+                edgeList.append(node1)
+
+        
+        graph += "\n\n"
+    graph += "}"
+
+    return graph
 
 
 # def extract_graph(records):
@@ -130,26 +159,53 @@ def encode_edgeList_from_p_records(records) :
 
 def test(query : str, records : list, option : str = "API"):  
 
-    graph_text = encode_expert_from_p_records(records)
-
-    print("\n=== Encoded Graph ===\n")
+    graph_text_expert = encode_expert_from_p_records(records)
+    graph_text_adjency = encode_adjency_from_p_records(records)
+    graph_text_edgelist= encode_edgeList_from_p_records(records)
     
-    print(graph_text)
-
     # Prompt avec graphe
-    graph_prompt = f"""
+    graph_prompt_expert = f"""
     You are given a knowledge graph extracted from Neo4j.
 
     Question:
     {query}
 
     Graph:
-    {graph_text}
+    {graph_text_expert}
 
     Answer using only the information in the graph. Be concise.
     """
 
-    graph_answer = queryLLLM(graph_prompt, option)
+    graph_prompt_adjency = f"""
+    You are given a knowledge graph extracted from Neo4j.
 
-    print("=== LLM answer ===")
-    print(graph_answer)
+    Question:
+    {query}
+
+    Graph:
+    {graph_text_adjency}
+
+    Answer using only the information in the graph. Be concise.
+    """
+
+    graph_prompt_edgeList = f"""
+    You are given a knowledge graph extracted from Neo4j.
+
+    Question:
+    {query}
+
+    Graph:
+    {graph_text_edgelist}
+
+    Answer using only the information in the graph. Be concise.
+    """
+    
+    print(graph_prompt_expert)
+    print("\n\n===================\n\n")
+    print(graph_prompt_adjency)
+    print("\n\n===================\n\n")
+    print(graph_prompt_edgeList)
+
+    #graph_answer = queryLLLM(graph_prompt, option)
+    #print("=== LLM answer ===")
+    #print(graph_answer)

@@ -58,11 +58,11 @@ graphs_tests = {
         {
             "file_names" : 
             {
-                "stackoverflow_4" : 4,
-                #"stackoverflow_12" : 12,
+                "stackoverflow_3" : 4,
+                "stackoverflow_6" : 7,
                 #"stackoverflow_20" : 20
             },
-            "queries" : ["Who has answered multiple times to a question?"]
+            "queries" : ["What is the general subject of the questions?"]
         },
     "recommendations-5.26" : 
         {
@@ -73,7 +73,28 @@ graphs_tests = {
                 #"recommendations_20" : 20
             },
             "queries" : ["Who has made multiple recommendations?"]
-        }
+        },
+    "northwind-50" : 
+        {
+            "file_names" : 
+            {
+                "northwind-3" : 4,
+                "northwind-6" : 7
+            },
+            "queries" : ["What is the mean quantity of commands?"]
+
+        },
+    "pole-50" : 
+        {
+            "file_names" : 
+            {
+                "pole-3" : 4,
+                "pole-6" : 7
+            },
+            "queries" : ["Can you tell me which is the most common crime?"]
+
+        },
+
 }
 
 
@@ -134,7 +155,9 @@ def testGraphs(global_path : str, option : str) :
             try : 
                 records = con.getGraphFromFile(f"{global_path}/{file}.json")
                 
-                print(records)
+                #print(records)
+
+                print(f"\n\n======== OUTPUTS FOR {file} =========\n\n")
 
                 # TODO : A DECOMMENTER QUAND IA
                 for query in graphs_tests[graph]["queries"] : 
