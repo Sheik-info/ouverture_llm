@@ -77,7 +77,7 @@ llm = OpenAILLM(
     model_name="qwen/qwen-2.5-72b-instruct",          
     #model_name="mistralai/mistral-small-24b-instruct-2501",
     #model_name="google/gemini-2.0-flash-001",
-    api_key="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",
+    api_key="clé api que tu veux",
     base_url="https://openrouter.ai/api/v1",
     model_params={"temperature": 0.0}
 )
